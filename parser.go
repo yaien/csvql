@@ -114,6 +114,9 @@ func Parse(reader io.Reader, name string) (*Schema, [][]string, error) {
 
 	columns := make([]Column, len(records[0]))
 	for index, name := range records[0] {
+		name = strings.TrimSpace(name)
+		name = strings.ReplaceAll(name, " ", "_")
+		name = strings.ToLower(name)
 		columns[index] = Column{Name: name, Type: "VARCHAR"}
 	}
 
