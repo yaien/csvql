@@ -1,0 +1,11 @@
+id,name,age,salary,is_active,birth_date,last_login,start_time,score,department
+1,John Doe,30,75000.50,true,1994-03-15,2024-10-09 14:30:25,09:00:00,95.5,Engineering
+2,Jane Smith,25,65000,true,1999-07-22,2024-10-09T16:45:30Z,10:30:00,88.7,Marketing
+3,Bob Johnson,35,80000.75,false,1989-12-01,12/10/2024 08:15:45,08:45:00,92.3,Sales
+4,Alice Brown,28,72000,false,01/15/1996,2024-10-09 11:20:00,2:30PM,89.9,Engineering
+5,Charlie Wilson,42,95000.25,TRUE,1982-05-30,10/09/2024 13:45:30,14:15:00,96.1,Management
+6,Diana Lee,31,68000,FALSE,1993-08-18,2024-10-09T09:30:15,9:00AM,87.4,Marketing
+7,Frank Miller,29,71500.50,true,1995-11-03,09/10/2024 17:20:10,16:45:00,91.2,Engineering
+8,Grace Taylor,26,63000,false,1998-04-12,2024-10-09 12:10:25,11:30:00,85.8,Sales
+9,Henry Davis,38,85000.75,true,1986-09-25,10/09/2024 15:55:40,3:45PM,94.6,Management
+10,Ivy Chen,33,77000,true,1991-02-08,2024-10-09 10:40:15,10:15:00,90.3,Engineering
