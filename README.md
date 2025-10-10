@@ -10,6 +10,7 @@ A high-performance CSV query tool written in Go, powered by DuckDB. Query CSV fi
 - 🕒 **Smart Date/Time Parsing**: Multiple date and time format support
 - 📋 **Tabular Output**: Clean tabwriter-formatted table display
 - 🎯 **Type Detection**: Automatic detection of integers, floats, booleans, dates, and strings
+- 🌐 **REST API Server**: HTTP API for web applications and remote access
 
 ## Installation
 
@@ -29,6 +30,8 @@ go install github.com/yaien/csvql/cmd/csvql@latest
 
 ## Quick Start
 
+### Command Line Interface
+
 ```bash
 # Query a CSV file (default: shows first 20 rows)
 csvql data.csv
@@ -41,6 +44,23 @@ csvql employees.csv -t employees -q "SELECT department, AVG(salary) as avg_salar
 
 # Aggregate data
 csvql products.csv -q "SELECT COUNT(*), AVG(price) FROM data WHERE in_stock = true"
+```
+
+### REST API Server
+
+```bash
+# Start REST API server with a CSV file
+csvql serve employees.csv --port 8047
+
+# Upload additional CSV files and query via HTTP
+curl -X POST http://localhost:8047/csvql/submit/ \
+  -F "file=@users.csv" \
+  -F "table=users"
+
+# Execute SQL queries
+curl -X POST http://localhost:8047/csvql/query/ \
+  -H "Content-Type: application/json" \
+  -d '{"query": "SELECT * FROM data WHERE age > 25"}'
 ```
 
 ## Usage
@@ -117,6 +137,7 @@ Ivy Chen        33      77000
 
 ## Command Line Options
 
+### Query Mode
 ```bash
 csvql [flags] <file>
 
@@ -124,6 +145,18 @@ Flags:
   -q, --query string   SQL query to execute on the CSV data (default "SELECT * FROM data LIMIT 20;")
   -t, --table string   Name of the table for SQL queries (default "data")
   -h, --help          Help for csvql
+```
+
+### Server Mode
+```bash
+csvql serve [flags] <file.csv>
+
+Flags:
+  -p, --port string       Port to listen on (default "8047")
+      --max-memory int    Maximum memory for multipart form parsing in bytes (default 1073741824)
+      --dbpath string     Path to DuckDB database file (empty for in-memory)
+      --table string      Table name to use for the CSV data (default "data")
+  -h, --help             Help for csvql serve
 ```
 
 ### Examples
@@ -140,6 +173,64 @@ csvql employees.csv -t emp -q "SELECT * FROM emp WHERE salary > 50000"
 
 # Complex aggregation
 csvql sales.csv -q "SELECT DATE(order_date) as day, SUM(amount) FROM data GROUP BY day ORDER BY day"
+
+# Start REST API server with a CSV file
+csvql serve employees.csv --port 8047 --table emp
+
+# Start server with persistent database
+csvql serve data.csv --dbpath ./my_database.db --port 9000
+```
+
+## REST API
+
+CSVQL can run as a REST API server, providing HTTP access to CSV querying capabilities. See [REST_API.md](REST_API.md) for detailed documentation.
+
+### Quick API Example
+
+```bash
+# Start server with a CSV file
+csvql serve employees.csv
+
+# Upload additional CSV files
+curl -X POST http://localhost:8047/csvql/submit/ \
+  -F "file=@users.csv" \
+  -F "table=users"
+
+# Get available schemas
+curl http://localhost:8047/csvql/schemas/
+
+# Execute SQL query
+curl -X POST http://localhost:8047/csvql/query/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "SELECT name, age FROM data WHERE department = ?",
+    "params": ["Engineering"]
+  }'
+```
+
+### API Endpoints
+
+- `POST /csvql/submit/` - Upload and import CSV files
+- `POST /csvql/query/` - Execute SQL queries  
+- `GET /csvql/schemas/` - Get table schemas and metadata
+
+### Response Format
+
+```json
+{
+  "data": {
+    "columns": ["name", "age", "department"],
+    "rows": [
+      ["John Doe", 30, "Engineering"],
+      ["Jane Smith", 28, "Engineering"]
+    ]
+  },
+  "meta": {
+    "rowCount": 2,
+    "query": "SELECT name, age, department FROM data WHERE department = 'Engineering'"
+  },
+  "executionTime": "2.5ms"
+}
 ```
 
 ### CSV Parsing Options
@@ -185,11 +276,17 @@ go test -v ./...
 ```
 csvql/
 ├── cmd/csvql/          # CLI application entry point
-├── internal/
-│   └── printer/        # Table formatting and output
+│   ├── main.go         # Main application entry
+│   ├── root.go         # Root CLI command and query functionality
+│   └── server.go       # REST API server command
+├── csvqlserver/        # REST API server package
+│   ├── server.go       # Server implementation and handlers
+│   ├── routes.go       # HTTP routing configuration
+│   └── utils.go        # Utility functions for responses
 ├── testdata/           # Sample CSV files
 ├── parser.go           # CSV parsing and schema detection
 ├── parser_test.go      # Unit tests
+├── web.go             # Web utilities
 └── go.mod             # Go module definition
 ```
 
@@ -197,8 +294,10 @@ csvql/
 
 1. **Parser**: Handles CSV reading and type inference
 2. **Schema Detection**: Automatically determines column types
-3. **DuckDB Integration**: Provides SQL query engine
-4. **Table Printer**: Formats output for terminal display
+3. **DuckDB Integration**: Provides SQL query engine with single database instance
+4. **CLI Interface**: Command-line tool with query and server modes
+5. **REST API Server**: HTTP API for web applications and remote access
+6. **Table Printer**: Formats output for terminal display
 
 ## Performance
 
@@ -217,6 +316,31 @@ CSVQL leverages DuckDB's columnar storage and vectorized execution for optimal p
 5. Commit your changes: `git commit -am 'Add feature'`
 6. Push to the branch: `git push origin feature-name`
 7. Submit a pull request
+
+## Quick Reference
+
+### CLI Commands
+```bash
+# Query CSV file
+csvql data.csv -q "SELECT * FROM data WHERE age > 25"
+
+# Start REST API server
+csvql serve data.csv --port 8047
+```
+
+### API Endpoints
+```bash
+# Upload CSV
+curl -X POST http://localhost:8047/csvql/submit/ -F "file=@data.csv"
+
+# Query data
+curl -X POST http://localhost:8047/csvql/query/ \
+  -H "Content-Type: application/json" \
+  -d '{"query": "SELECT * FROM data LIMIT 10"}'
+
+# Get schemas
+curl http://localhost:8047/csvql/schemas/
+```
 
 ## License
 

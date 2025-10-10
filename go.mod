@@ -1,4 +1,4 @@
-module github.com/yaien/csvviewer
+module github.com/yaien/csvql
 
 go 1.24.3
 

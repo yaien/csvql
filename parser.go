@@ -41,13 +41,13 @@ var TimeFormats = []string{
 }
 
 type Column struct {
-	Name string
-	Type string
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 type Schema struct {
-	Name    string
-	Columns []Column
+	Name    string   `json:"name"`
+	Columns []Column `json:"columns"`
 }
 
 type ValueParser func(v string) (any, error)
@@ -151,27 +151,30 @@ func ParseFile(filename string, tablename string) (*Schema, [][]string, error) {
 	return Parse(file, tablename)
 }
 
-// CreateDB creates an in-memory DuckDB database from the provided Table structure.
-func CreateDB(table *Schema, rows [][]string) (*sql.DB, error) {
-	db, err := sql.Open("duckdb", "")
+func CreateDB(path string) (*sql.DB, error) {
+	db, err := sql.Open("duckdb", path)
 	if err != nil {
 		return nil, err
 	}
+	return db, nil
+}
+
+// ImportOnDB creates an in-memory DuckDB database from the provided Table structure.
+func ImportOnDB(db *sql.DB, table *Schema, rows [][]string) error {
 
 	// Create table with columns in one statement (DuckDB style)
-	var createSQL string
-	createSQL = fmt.Sprintf("CREATE TABLE %s (", table.Name)
-	for i, col := range table.Columns {
-		if i > 0 {
-			createSQL += ", "
+	sentece := fmt.Sprintf("CREATE TABLE %s (", table.Name)
+	for index, column := range table.Columns {
+		if index > 0 {
+			sentece += ", "
 		}
-		createSQL += fmt.Sprintf("%s %s", col.Name, col.Type)
+		sentece += fmt.Sprintf("%s %s", column.Name, column.Type)
 	}
-	createSQL += ")"
+	sentece += ")"
 
-	_, err = db.Exec(createSQL)
+	_, err := db.Exec(sentece)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Insert rows
@@ -188,19 +191,18 @@ func CreateDB(table *Schema, rows [][]string) (*sql.DB, error) {
 			parser := parsers[column.Type]
 			value, err := parser(value)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse value '%s' for column '%s' of type '%s': %s", row[index], column.Name, column.Type, err.Error())
+				return fmt.Errorf("failed to parse value '%s' for column '%s' of type '%s': %s", row[index], column.Name, column.Type, err.Error())
 			}
 
 			values[index] = value
 		}
 		_, err := db.Exec(fmt.Sprintf("INSERT INTO %s VALUES (%s);", table.Name, placeholders), values...)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return db, nil
-
+	return nil
 }
 
 // Read reads a CSV file, infers its structure, and creates an in-memory DuckDB database.
@@ -210,9 +212,14 @@ func Read(filename, tablename string) (*sql.DB, *Schema, error) {
 		return nil, nil, fmt.Errorf("parse error: %s", err.Error())
 	}
 
-	db, err := CreateDB(schema, rows)
+	db, err := CreateDB("")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create database: %s", err.Error())
+	}
+
+	err = ImportOnDB(db, schema, rows)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to import database: %s", err.Error())
 	}
 
 	return db, schema, nil

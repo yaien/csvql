@@ -6,7 +6,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
-	csvql "github.com/yaien/csvviewer"
+	"github.com/yaien/csvql"
 )
 
 func root() *cobra.Command {
@@ -14,11 +14,11 @@ func root() *cobra.Command {
 	var query string
 
 	cmd := &cobra.Command{
-		Use:   "csvviewer [flags] <file>",
-		Short: "A simple CSV viewer with type inference",
-		Long: `csvviewer is a command-line tool that reads a CSV file, infers data types for each column,
-			   and displays the content in a formatted table. It supports various data types including integers,
-               floats, booleans, dates, times, and datetimes.`,
+		Use:   "csvql [flags] <file>",
+		Short: "A high-performance CSV query tool powered by DuckDB",
+		Long: `csvql is a command-line tool that reads CSV files, infers data types for each column,
+			   and allows querying with SQL. It supports various data types including integers,
+               floats, booleans, dates, times, and timestamps.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			db, _, err := csvql.Read(args[0], tablename)
