@@ -12,40 +12,13 @@ import (
 	"github.com/yaien/csvql"
 )
 
-type SQLRequest struct {
-	Query  string `json:"query"`
-	Params []any  `json:"params,omitempty"`
-}
-
-type SQLResponse struct {
-	Data          *QueryData `json:"data,omitempty"`
-	Meta          *QueryMeta `json:"meta"`
-	Error         string     `json:"error,omitempty"`
-	ExecutionTime string     `json:"executionTime"`
-}
-
-type QueryData struct {
-	Columns []string `json:"columns"`
-	Rows    [][]any  `json:"rows"`
-}
-
-type QueryMeta struct {
-	RowCount int    `json:"rowCount"`
-	Query    string `json:"query"`
-	Params   []any  `json:"params"`
-}
-
 type Server struct {
 	db        *sql.DB
-	schemas   map[string]*csvql.Schema
+	schemas   []*csvql.Schema
 	maxMemory int64
 }
 
-func New(db *sql.DB, schemas map[string]*csvql.Schema) *Server {
-	if schemas == nil {
-		schemas = make(map[string]*csvql.Schema)
-	}
-
+func New(db *sql.DB, schemas []*csvql.Schema) *Server {
 	return &Server{
 		db:        db,
 		schemas:   schemas,
@@ -89,7 +62,7 @@ func (s *Server) Submit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store schema for API metadata
-	s.schemas[tablename] = schema
+	s.schemas = append(s.schemas, schema)
 
 	Send(w, http.StatusOK, H{"status": "success", "table": tablename})
 
@@ -102,61 +75,18 @@ func (s *Server) Query(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		Send(w, http.StatusBadRequest, SQLResponse{
-			Error:         fmt.Sprintf("invalid json request: %v", err),
-			ExecutionTime: time.Since(start).String(),
-			Meta:          &QueryMeta{},
+			Error: fmt.Sprintf("invalid json request: %v", err),
+			Meta:  &QueryMeta{Duration: time.Since(start).String()},
 		})
 		return
 	}
 
 	// Execute query on the single database
-	rows, err := s.db.Query(req.Query, req.Params...)
+	columns, rows, err := csvql.Query(s.db, req.Query, req.Params...)
 	if err != nil {
 		Send(w, http.StatusBadRequest, SQLResponse{
-			Error:         fmt.Sprintf("Query execution error: %v", err),
-			ExecutionTime: time.Since(start).String(),
-			Meta:          &QueryMeta{Query: req.Query, Params: req.Params},
-		})
-		return
-	}
-
-	// Get column names
-	columns, err := rows.Columns()
-	if err != nil {
-		Send(w, http.StatusInternalServerError, SQLResponse{
-			Error:         fmt.Sprintf("failed to get columns: %v", err),
-			ExecutionTime: time.Since(start).String(),
-			Meta:          &QueryMeta{Query: req.Query, Params: req.Params},
-		})
-		return
-	}
-
-	// Collect results
-	var results [][]any
-	for rows.Next() {
-		values := make([]any, len(columns))
-		pointers := make([]any, len(columns))
-		for i := range values {
-			pointers[i] = &values[i]
-		}
-
-		if err := rows.Scan(pointers...); err != nil {
-			Send(w, http.StatusInternalServerError, SQLResponse{
-				Error:         fmt.Sprintf("failed to scan row: %v", err),
-				ExecutionTime: time.Since(start).String(),
-				Meta:          &QueryMeta{Query: req.Query, Params: req.Params},
-			})
-			return
-		}
-
-		results = append(results, values)
-	}
-
-	if err = rows.Err(); err != nil {
-		Send(w, http.StatusInternalServerError, SQLResponse{
-			Error:         fmt.Sprintf("row iteration error: %v", err),
-			ExecutionTime: time.Since(start).String(),
-			Meta:          &QueryMeta{Query: req.Query, Params: req.Params},
+			Error: fmt.Sprintf("Query execution error: %v", err),
+			Meta:  &QueryMeta{Query: req.Query, Params: req.Params, Duration: time.Since(start).String()},
 		})
 		return
 	}
@@ -164,14 +94,14 @@ func (s *Server) Query(w http.ResponseWriter, r *http.Request) {
 	Send(w, http.StatusOK, SQLResponse{
 		Data: &QueryData{
 			Columns: columns,
-			Rows:    results,
+			Rows:    rows,
 		},
 		Meta: &QueryMeta{
-			RowCount: len(results),
+			RowCount: len(rows),
 			Query:    req.Query,
 			Params:   req.Params,
+			Duration: time.Since(start).String(),
 		},
-		ExecutionTime: time.Since(start).String(),
 	})
 
 }

@@ -28,14 +28,9 @@ func root() *cobra.Command {
 
 			writter := tabwriter.NewWriter(os.Stdout, 0, 4, 1, ' ', 0)
 
-			rows, err := db.Query(query)
+			rows, cols, err := csvql.Query(db, query)
 			if err != nil {
 				return fmt.Errorf("query error: %w", err)
-			}
-
-			cols, err := rows.Columns()
-			if err != nil {
-				return err
 			}
 
 			// Print header
@@ -49,23 +44,12 @@ func root() *cobra.Command {
 			_, _ = fmt.Fprintln(writter)
 
 			// Print rows
-			for rows.Next() {
-
-				columns := make([]any, len(cols))
-				pointers := make([]any, len(cols))
-				for i := range columns {
-					pointers[i] = &columns[i]
-				}
-
-				if err := rows.Scan(pointers...); err != nil {
-					return err
-				}
-
-				for i, col := range columns {
+			for _, row := range rows {
+				for i, value := range row {
 					if i > 0 {
 						_, _ = fmt.Fprint(writter, "\t")
 					}
-					_, _ = fmt.Fprint(writter, col)
+					_, _ = fmt.Fprint(writter, value)
 				}
 				_, _ = fmt.Fprintln(writter)
 			}

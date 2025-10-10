@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yaien/csvql"
 	"github.com/yaien/csvql/csvqlserver"
+	"github.com/yaien/csvql/csvqlsite"
 )
 
 func serve() *cobra.Command {
@@ -26,13 +27,13 @@ func serve() *cobra.Command {
 				return err
 			}
 
-			schemas := map[string]*csvql.Schema{
-				schema.Name: schema,
-			}
+			schemas := []*csvql.Schema{schema}
 
 			server := csvqlserver.New(db, schemas)
 			server.SetMaxMemory(maxMemory)
 			server.Route(http.DefaultServeMux)
+
+			csvqlsite.Route(http.DefaultServeMux)
 
 			addr := net.JoinHostPort("", port)
 			slog.Info("starting server", "addr", addr)

@@ -41,8 +41,9 @@ var TimeFormats = []string{
 }
 
 type Column struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Format string `json:"format,omitempty"`
 }
 
 type Schema struct {
@@ -50,55 +51,90 @@ type Schema struct {
 	Columns []Column `json:"columns"`
 }
 
-type ValueParser func(v string) (any, error)
-
-var parsers = map[string]ValueParser{
-	"INTEGER": func(v string) (any, error) {
-		return strconv.ParseInt(v, 10, 64)
-	},
-	"DOUBLE": func(v string) (any, error) {
-		return strconv.ParseFloat(v, 64)
-	},
-	"BOOLEAN": func(v string) (any, error) {
-		switch strings.ToLower(v) {
-		case "true":
-			return true, nil
-		case "false":
-			return false, nil
-		default:
-			return nil, fmt.Errorf("invalid boolean value: %s", v)
-		}
-	},
-	"VARCHAR": func(v string) (any, error) {
-		return v, nil
-	},
-	"DATE": func(v string) (any, error) {
-		for _, format := range DateFormats {
-			if t, err := time.Parse(format, v); err == nil {
-				return t, nil
-			}
-		}
-		return nil, fmt.Errorf("invalid DATE value: %s", v)
-	},
-	"TIME": func(v string) (any, error) {
-		for _, format := range TimeFormats {
-			if t, err := time.Parse(format, v); err == nil {
-				return t, nil
-			}
-		}
-		return nil, fmt.Errorf("invalid TIME value: %s", v)
-	},
-	"TIMESTAMP": func(v string) (any, error) {
-		for _, format := range TimestampFormats {
-			if t, err := time.Parse(format, v); err == nil {
-				return t, nil
-			}
-		}
-		return nil, fmt.Errorf("invalid TIMESTAMP value: %s", v)
-	},
+type Parser struct {
+	Name     string
+	Validate func(v string) (value any, format string, err error)
 }
 
-var parsesOrder = []string{"INTEGER", "DOUBLE", "BOOLEAN", "TIMESTAMP", "DATE", "TIME", "VARCHAR"}
+type Parsers []*Parser
+
+func (p Parsers) Get(name string) (*Parser, bool) {
+	for _, parser := range p {
+		if parser.Name == name {
+			return parser, true
+		}
+	}
+	return nil, false
+}
+
+var parsers = Parsers{
+	{
+		Name: "INTEGER",
+		Validate: func(v string) (any, string, error) {
+			n, err := strconv.ParseInt(v, 10, 64)
+			return n, "", err
+		},
+	},
+	{
+		Name: "DOUBLE",
+		Validate: func(v string) (any, string, error) {
+			n, err := strconv.ParseFloat(v, 64)
+			return n, "", err
+		},
+	},
+	{
+		Name: "BOOLEAN",
+		Validate: func(v string) (any, string, error) {
+			switch strings.ToLower(v) {
+			case "true":
+				return true, "", nil
+			case "false":
+				return false, "", nil
+			default:
+				return nil, "", fmt.Errorf("invalid boolean value: %s", v)
+			}
+		},
+	},
+	{
+		Name: "DATE",
+		Validate: func(v string) (any, string, error) {
+			for _, format := range DateFormats {
+				if t, err := time.Parse(format, v); err == nil {
+					return t, format, nil
+				}
+			}
+			return nil, "", fmt.Errorf("invalid DATE value: %s", v)
+		},
+	},
+	{
+		Name: "TIME",
+		Validate: func(v string) (any, string, error) {
+			for _, format := range TimeFormats {
+				if t, err := time.Parse(format, v); err == nil {
+					return t, format, nil
+				}
+			}
+			return nil, "", fmt.Errorf("invalid TIME value: %s", v)
+		},
+	},
+	{
+		Name: "TIMESTAMP",
+		Validate: func(v string) (any, string, error) {
+			for _, format := range TimestampFormats {
+				if t, err := time.Parse(format, v); err == nil {
+					return t, format, nil
+				}
+			}
+			return nil, "", fmt.Errorf("invalid TIMESTAMP value: %s", v)
+		},
+	},
+	{
+		Name: "VARCHAR",
+		Validate: func(v string) (any, string, error) {
+			return v, "", nil
+		},
+	},
+}
 
 // Parse reads CSV data from the provided reader and infers column types.
 func Parse(reader io.Reader, name string) (*Schema, [][]string, error) {
@@ -127,10 +163,10 @@ func Parse(reader io.Reader, name string) (*Schema, [][]string, error) {
 			continue
 		}
 
-		for _, parserName := range parsesOrder {
-			parse := parsers[parserName]
-			if _, err := parse(v); err == nil {
-				columns[index].Type = parserName
+		for _, parser := range parsers {
+			if _, format, err := parser.Validate(v); err == nil {
+				columns[index].Type = parser.Name
+				columns[index].Format = format
 				break
 			}
 		}
@@ -188,13 +224,18 @@ func ImportOnDB(db *sql.DB, table *Schema, rows [][]string) error {
 			placeholders += "?"
 
 			column := table.Columns[index]
-			parser := parsers[column.Type]
-			value, err := parser(value)
+
+			parser, ok := parsers.Get(column.Type)
+			if !ok {
+				return fmt.Errorf("unknown parser for type: %s", column.Type)
+			}
+
+			v, _, err := parser.Validate(value)
 			if err != nil {
 				return fmt.Errorf("failed to parse value '%s' for column '%s' of type '%s': %s", row[index], column.Name, column.Type, err.Error())
 			}
 
-			values[index] = value
+			values[index] = v
 		}
 		_, err := db.Exec(fmt.Sprintf("INSERT INTO %s VALUES (%s);", table.Name, placeholders), values...)
 		if err != nil {
