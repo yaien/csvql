@@ -2,7 +2,10 @@ module github.com/yaien/csvql
 
 go 1.25
 
-require github.com/marcboeker/go-duckdb v1.8.5
+require (
+	github.com/marcboeker/go-duckdb v1.8.5
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
+)
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -19,7 +22,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.9.2 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
