@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log/slog"
 	"net"
 	"net/http"
 
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"github.com/yaien/csvql"
 	"github.com/yaien/csvql/csvqlserver"
@@ -35,8 +35,15 @@ func serve() *cobra.Command {
 
 			csvqlsite.Route(http.DefaultServeMux)
 
-			addr := net.JoinHostPort("", port)
-			slog.Info("starting server", "addr", addr)
+			addr := net.JoinHostPort("localhost", port)
+
+			go func() {
+				err := browser.OpenURL("http://" + addr)
+				if err != nil {
+					cmd.PrintErrf("failed to open browser: %v\n", err)
+				}
+			}()
+
 			return http.ListenAndServe(addr, nil)
 		},
 	}

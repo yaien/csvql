@@ -13,6 +13,8 @@ document.addEventListener('alpine:init', () => {
             const response = await fetch('/csvql/schemas')
             this.schemas = await response.json()
             this.ready = true
+            this.query = `select * from ${this.schemas[0].name} limit 10`
+            await this.execute()
         },
 
         async execute() {
