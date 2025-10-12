@@ -8,7 +8,7 @@ A high-performance CSV query tool written in Go, powered by DuckDB. Query CSV fi
 - 🔍 **Automatic Schema Detection**: Intelligent type inference for columns
 - 📊 **SQL Query Support**: Full SQL capabilities on CSV data
 - 🕒 **Smart Date/Time Parsing**: Multiple date and time format support
-- 📋 **Tabular Output**: Clean tabwriter-formatted table display
+- 📋 **JSON Output**: Clean JSON-formatted results for easy integration
 - 🎯 **Type Detection**: Automatic detection of integers, floats, booleans, dates, and strings
 - 🌐 **REST API Server**: HTTP API for web applications and remote access
 
@@ -33,16 +33,16 @@ go install github.com/yaien/csvql/cmd/csvql@latest
 ### Command Line Interface
 
 ```bash
-# Query a CSV file (default: shows first 20 rows)
+# Query a CSV file (default: shows first 20 rows as JSON)
 csvql data.csv
 
-# Custom SQL query
+# Custom SQL query with JSON output
 csvql users.csv -q "SELECT * FROM data WHERE age > 25"
 
 # Custom table name
 csvql employees.csv -t employees -q "SELECT department, AVG(salary) as avg_salary FROM employees GROUP BY department"
 
-# Aggregate data
+# Aggregate data returned as JSON
 csvql products.csv -q "SELECT COUNT(*), AVG(price) FROM data WHERE in_stock = true"
 ```
 
@@ -67,22 +67,22 @@ curl -X POST http://localhost:8047/csvql/query/ \
 
 ### Basic Query (Default)
 ```bash
-# Shows first 20 rows with inferred schema
+# Shows first 20 rows with inferred schema as JSON
 csvql data.csv
 ```
 
 ### Custom SQL Queries
 ```bash
-# Filter data
+# Filter data - returns JSON array of objects
 csvql users.csv -q "SELECT name, age FROM data WHERE age > 30"
 
-# Aggregations
+# Aggregations - JSON formatted results
 csvql products.csv -q "SELECT COUNT(*), AVG(price) FROM data WHERE in_stock = true"
 
-# Date/Time queries
+# Date/Time queries - JSON output
 csvql events.csv -q "SELECT * FROM data WHERE event_date > '2024-01-01'"
 
-# Custom table name
+# Custom table name - JSON results
 csvql employees.csv -t emp -q "SELECT * FROM emp WHERE department = 'Engineering'"
 ```
 
@@ -127,12 +127,29 @@ The repository includes sample CSV files in the `testdata/` directory:
 $ csvql testdata/testdata.csv -q "SELECT name, age, salary FROM data WHERE department = 'Engineering'"
 ```
 
-```
-name            age     salary
-John Doe        30      75000.5
-Alice Brown     28      72000
-Frank Miller    29      71500.5
-Ivy Chen        33      77000
+```json
+[
+  {
+    "name": "John Doe",
+    "age": 30,
+    "salary": 75000.5
+  },
+  {
+    "name": "Alice Brown", 
+    "age": 28,
+    "salary": 72000
+  },
+  {
+    "name": "Frank Miller",
+    "age": 29,
+    "salary": 71500.5
+  },
+  {
+    "name": "Ivy Chen",
+    "age": 33,
+    "salary": 77000
+  }
+]
 ```
 
 ## Command Line Options
@@ -162,16 +179,16 @@ Flags:
 ### Examples
 
 ```bash
-# View first 20 rows (default behavior)
+# View first 20 rows as JSON (default behavior)
 csvql employees.csv
 
-# Custom query with default table name "data"
+# Custom query with default table name "data" - JSON output
 csvql employees.csv -q "SELECT department, COUNT(*) FROM data GROUP BY department"
 
-# Custom table name
+# Custom table name with JSON results
 csvql employees.csv -t emp -q "SELECT * FROM emp WHERE salary > 50000"
 
-# Complex aggregation
+# Complex aggregation with JSON output
 csvql sales.csv -q "SELECT DATE(order_date) as day, SUM(amount) FROM data GROUP BY day ORDER BY day"
 
 # Start REST API server with a CSV file
@@ -295,9 +312,9 @@ csvql/
 1. **Parser**: Handles CSV reading and type inference
 2. **Schema Detection**: Automatically determines column types
 3. **DuckDB Integration**: Provides SQL query engine with single database instance
-4. **CLI Interface**: Command-line tool with query and server modes
+4. **CLI Interface**: Command-line tool with JSON output for query and server modes
 5. **REST API Server**: HTTP API for web applications and remote access
-6. **Table Printer**: Formats output for terminal display
+6. **JSON Formatter**: Outputs results in clean, structured JSON format
 
 ## Performance
 
@@ -321,7 +338,7 @@ CSVQL leverages DuckDB's columnar storage and vectorized execution for optimal p
 
 ### CLI Commands
 ```bash
-# Query CSV file
+# Query CSV file - returns JSON
 csvql data.csv -q "SELECT * FROM data WHERE age > 25"
 
 # Start REST API server

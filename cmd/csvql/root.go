@@ -1,9 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 	"github.com/yaien/csvql"
@@ -26,37 +26,23 @@ func root() *cobra.Command {
 				return err
 			}
 
-			writter := tabwriter.NewWriter(os.Stdout, 0, 4, 1, ' ', 0)
-
-			rows, cols, err := csvql.Query(db, query)
+			columns, rows, err := csvql.Query(db, query)
 			if err != nil {
 				return fmt.Errorf("query error: %w", err)
 			}
 
-			// Print header
-			for i, col := range cols {
-				if i > 0 {
-					_, _ = fmt.Fprint(writter, "\t")
+			results := make([]map[string]any, len(rows))
+			for rindex, row := range rows {
+				entry := make(map[string]any, len(columns))
+				for cindex, column := range columns {
+					entry[column] = row[cindex]
 				}
-				_, _ = fmt.Fprint(writter, col)
+				results[rindex] = entry
 			}
 
-			_, _ = fmt.Fprintln(writter)
-
-			// Print rows
-			for _, row := range rows {
-				for i, value := range row {
-					if i > 0 {
-						_, _ = fmt.Fprint(writter, "\t")
-					}
-					_, _ = fmt.Fprint(writter, value)
-				}
-				_, _ = fmt.Fprintln(writter)
-			}
-
-			_ = writter.Flush()
-
-			return nil
+			encoder := json.NewEncoder(os.Stdout)
+			encoder.SetIndent("", "  ")
+			return encoder.Encode(results)
 		},
 	}
 
