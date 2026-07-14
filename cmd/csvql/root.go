@@ -1,53 +1,39 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/yaien/csvql"
 )
 
 func root() *cobra.Command {
-	var tablename string
-	var query string
 
 	cmd := &cobra.Command{
-		Use:   "csvql [flags] <file>",
-		Short: "A high-performance CSV query tool powered by DuckDB",
-		Long: `csvql is a command-line tool that reads CSV files, infers data types for each column,
-			   and allows querying with SQL. It supports various data types including integers,
-               floats, booleans, dates, times, and timestamps.`,
-		Args: cobra.ExactArgs(1),
+		Use:   "csvql [flags] <file> <tablename> <db>",
+		Short: `csvql is a command-line tool that exports a csv into a duckdb database`,
+		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			db, _, err := csvql.Read(args[0], tablename)
+			filename, tablename, dbpath := args[0], args[1], args[2]
+
+			db, err := csvql.CreateDB(dbpath)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed creating db: %w", err)
 			}
 
-			columns, rows, err := csvql.Query(db, query)
+			schema, records, err := csvql.ParseFile(filename, tablename)
 			if err != nil {
-				return fmt.Errorf("query error: %w", err)
+				return fmt.Errorf("failed parsing file: %w", err)
 			}
 
-			results := make([]map[string]any, len(rows))
-			for rindex, row := range rows {
-				entry := make(map[string]any, len(columns))
-				for cindex, column := range columns {
-					entry[column] = row[cindex]
-				}
-				results[rindex] = entry
+			err = csvql.ImportOnDB(db, schema, records)
+			if err != nil {
+				return fmt.Errorf("failed importing file: %w", err)
 			}
 
-			encoder := json.NewEncoder(os.Stdout)
-			encoder.SetIndent("", "  ")
-			return encoder.Encode(results)
+			return nil
 		},
 	}
-
-	cmd.Flags().StringVarP(&tablename, "table", "t", "data", "Name of the table for SQL queries")
-	cmd.Flags().StringVarP(&query, "query", "q", "SELECT * FROM data LIMIT 20;", "SQL query to execute on the CSV data")
 
 	return cmd
 }

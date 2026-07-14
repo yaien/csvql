@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
-	"time"
 
 	_ "github.com/marcboeker/go-duckdb"
 )
@@ -69,66 +67,6 @@ func (p Parsers) Get(name string) (*Parser, bool) {
 
 var parsers = Parsers{
 	{
-		Name: "INTEGER",
-		Validate: func(v string) (any, string, error) {
-			n, err := strconv.ParseInt(v, 10, 64)
-			return n, "", err
-		},
-	},
-	{
-		Name: "DOUBLE",
-		Validate: func(v string) (any, string, error) {
-			n, err := strconv.ParseFloat(v, 64)
-			return n, "", err
-		},
-	},
-	{
-		Name: "BOOLEAN",
-		Validate: func(v string) (any, string, error) {
-			switch strings.ToLower(v) {
-			case "true":
-				return true, "", nil
-			case "false":
-				return false, "", nil
-			default:
-				return nil, "", fmt.Errorf("invalid boolean value: %s", v)
-			}
-		},
-	},
-	{
-		Name: "DATE",
-		Validate: func(v string) (any, string, error) {
-			for _, format := range DateFormats {
-				if t, err := time.Parse(format, v); err == nil {
-					return t, format, nil
-				}
-			}
-			return nil, "", fmt.Errorf("invalid DATE value: %s", v)
-		},
-	},
-	{
-		Name: "TIME",
-		Validate: func(v string) (any, string, error) {
-			for _, format := range TimeFormats {
-				if t, err := time.Parse(format, v); err == nil {
-					return t, format, nil
-				}
-			}
-			return nil, "", fmt.Errorf("invalid TIME value: %s", v)
-		},
-	},
-	{
-		Name: "TIMESTAMP",
-		Validate: func(v string) (any, string, error) {
-			for _, format := range TimestampFormats {
-				if t, err := time.Parse(format, v); err == nil {
-					return t, format, nil
-				}
-			}
-			return nil, "", fmt.Errorf("invalid TIMESTAMP value: %s", v)
-		},
-	},
-	{
 		Name: "VARCHAR",
 		Validate: func(v string) (any, string, error) {
 			return v, "", nil
@@ -154,22 +92,6 @@ func Parse(reader io.Reader, name string) (*Schema, [][]string, error) {
 		name = strings.ReplaceAll(name, " ", "_")
 		name = strings.ToLower(name)
 		columns[index] = Column{Name: name, Type: "VARCHAR"}
-	}
-
-	// Analyze first few rows to determine column types
-	for index, v := range records[1] {
-		v = strings.TrimSpace(v)
-		if v == "" || v == "NULL" {
-			continue
-		}
-
-		for _, parser := range parsers {
-			if _, format, err := parser.Validate(v); err == nil {
-				columns[index].Type = parser.Name
-				columns[index].Format = format
-				break
-			}
-		}
 	}
 
 	return &Schema{Name: name, Columns: columns}, records[1:], nil

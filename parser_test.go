@@ -23,12 +23,12 @@ func TestParse(t *testing.T) {
                     2,Bob,25,false,2022-12-20,750.00
                     3,Charlie,35,true,2021-11-05,1250.75`,
 			columns: []Column{
-				{Name: "id", Type: "INTEGER"},
+				{Name: "id", Type: "VARCHAR"},
 				{Name: "name", Type: "VARCHAR"},
-				{Name: "age", Type: "INTEGER"},
-				{Name: "active", Type: "BOOLEAN"},
-				{Name: "signup_date", Type: "DATE"},
-				{Name: "balance", Type: "DOUBLE"},
+				{Name: "age", Type: "VARCHAR"},
+				{Name: "active", Type: "VARCHAR"},
+				{Name: "signup_date", Type: "VARCHAR"},
+				{Name: "balance", Type: "VARCHAR"},
 			},
 			rows: 3,
 		},
@@ -39,10 +39,10 @@ func TestParse(t *testing.T) {
 					2,Logout,15:45:00,2023-01-15T15:45:00Z`,
 			tablename: "events",
 			columns: []Column{
-				{Name: "event_id", Type: "INTEGER"},
+				{Name: "event_id", Type: "VARCHAR"},
 				{Name: "event_name", Type: "VARCHAR"},
-				{Name: "event_time", Type: "TIME"},
-				{Name: "event_timestamp", Type: "TIMESTAMP"},
+				{Name: "event_time", Type: "VARCHAR"},
+				{Name: "event_timestamp", Type: "VARCHAR"},
 			},
 			rows: 2,
 		},
@@ -54,9 +54,9 @@ func TestParse(t *testing.T) {
 					NULL,World,2023-02-01
 					456,,2023-03-01`,
 			columns: []Column{
-				{Name: "col1", Type: "INTEGER"},
+				{Name: "col1", Type: "VARCHAR"},
 				{Name: "col2", Type: "VARCHAR"},
-				{Name: "col3", Type: "DATE"},
+				{Name: "col3", Type: "VARCHAR"},
 			},
 			rows: 3,
 		},
