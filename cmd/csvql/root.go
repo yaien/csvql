@@ -18,7 +18,7 @@ func root() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			filename, tablename, dbpath := args[0], args[1], args[2]
 
-			db, err := sql.Open("sqlite3", dbpath)
+			db, err := sql.Open("sqlite", dbpath)
 			if err != nil {
 				return fmt.Errorf("failed opening db: %w", err)
 			}
