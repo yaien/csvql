@@ -1,9 +1,12 @@
 package csvql
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 	"testing"
+
+	_ "modernc.org/sqlite"
 )
 
 func TestParse(t *testing.T) {
@@ -109,7 +112,7 @@ func TestDB(t *testing.T) {
 		{
 			name:      "Simple",
 			filename:  "testdata/simple.csv",
-			tablename: "simple",
+			tablename: "sample",
 			rows:      4,
 			columns:   7,
 		},
@@ -117,7 +120,16 @@ func TestDB(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, _, err := Read(test.filename, test.tablename)
+			db, err := sql.Open("sqlite", ":memory:")
+			if err != nil {
+				t.Fatalf("open error: %s", err.Error())
+			}
+
+			t.Cleanup(func() {
+				db.Close()
+			})
+
+			err = ImportOnDB(db, test.filename, test.tablename)
 			if err != nil {
 				t.Fatalf("read error: %s", err.Error())
 			}
