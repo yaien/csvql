@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 	"strings"
-
-	_ "github.com/marcboeker/go-duckdb"
 )
 
 var DateFormats = []string{
@@ -117,35 +115,37 @@ func ImportOnDB(db *sql.DB, filename, tablename string) error {
 	}
 
 	// Create table with columns in one statement
-	create := fmt.Sprintf("CREATE TABLE %s (", table.Name)
+	var create strings.Builder
+	fmt.Fprintf(&create, "CREATE TABLE %s (", table.Name)
 	for index, column := range table.Columns {
 		if index > 0 {
-			create += ", "
+			fmt.Fprint(&create, ", ")
 		}
-		create += fmt.Sprintf("%s %s", column.Name, column.Type)
+		fmt.Fprintf(&create, "%s %s", column.Name, column.Type)
 	}
-	create += ")"
+	fmt.Fprint(&create, ")")
 
-	_, err = db.Exec(create)
+	_, err = db.Exec(create.String())
 	if err != nil {
 		return fmt.Errorf("create table error: %w", err)
 	}
 
 	// Insert rows
 	for _, row := range rows {
-		insert := fmt.Sprintf("INSERT INTO %s VALUES (", table.Name)
+		var insert strings.Builder
+		fmt.Fprintf(&insert, "INSERT INTO %s VALUES (", table.Name)
 
 		values := make([]any, len(row))
 		for index, value := range row {
-			insert += "?"
+			fmt.Fprint(&insert, "?")
 			if index < len(row)-1 {
-				insert += ","
+				fmt.Fprint(&insert, ",")
 			}
 			values[index] = value
 		}
-		insert += ");"
+		fmt.Fprint(&insert, ")")
 
-		_, err = db.Exec(insert, values...)
+		_, err = db.Exec(insert.String(), values...)
 		if err != nil {
 			return err
 		}
