@@ -63,18 +63,21 @@ func (p Parsers) Get(name string) (*Parser, bool) {
 	return nil, false
 }
 
-var parsers = Parsers{
-	{
-		Name: "VARCHAR",
-		Validate: func(v string) (any, string, error) {
-			return v, "", nil
-		},
-	},
+type ParseOptions func(*csv.Reader)
+
+func WithComma(comma string) ParseOptions {
+	return func(r *csv.Reader) {
+		r.Comma = []rune(comma)[0]
+	}
 }
 
 // Parse reads CSV data from the provided reader and infers column types.
-func Parse(reader io.Reader, name string) (*Schema, [][]string, error) {
+func Parse(reader io.Reader, name string, opts ...ParseOptions) (*Schema, [][]string, error) {
 	r := csv.NewReader(reader)
+	for _, opt := range opts {
+		opt(r)
+	}
+
 	records, err := r.ReadAll()
 	if err != nil {
 		return nil, nil, err
@@ -96,7 +99,7 @@ func Parse(reader io.Reader, name string) (*Schema, [][]string, error) {
 }
 
 // ParseFile reads CSV data from the specified file and infers column types.
-func ParseFile(filename string, tablename string) (*Schema, [][]string, error) {
+func ParseFile(filename string, tablename string, opts ...ParseOptions) (*Schema, [][]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, nil, err
@@ -104,12 +107,12 @@ func ParseFile(filename string, tablename string) (*Schema, [][]string, error) {
 
 	defer func() { _ = file.Close() }()
 
-	return Parse(file, tablename)
+	return Parse(file, tablename, opts...)
 }
 
 // ImportOnDB creates an db from the provided Table structure.
-func ImportOnDB(db *sql.DB, filename, tablename string) error {
-	table, rows, err := ParseFile(filename, tablename)
+func ImportOnDB(db *sql.DB, filename, tablename string, opts ...ParseOptions) error {
+	table, rows, err := ParseFile(filename, tablename, opts...)
 	if err != nil {
 		return err
 	}

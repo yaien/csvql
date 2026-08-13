@@ -10,7 +10,7 @@ import (
 )
 
 func root() *cobra.Command {
-
+	var comma string
 	cmd := &cobra.Command{
 		Use:   "csvql [flags] <file> <tablename> <db>",
 		Short: `csvql is a command-line tool that exports a csv into a sqlite database`,
@@ -23,7 +23,7 @@ func root() *cobra.Command {
 				return fmt.Errorf("failed opening db: %w", err)
 			}
 
-			err = csvql.ImportOnDB(db, filename, tablename)
+			err = csvql.ImportOnDB(db, filename, tablename, csvql.WithComma(comma))
 			if err != nil {
 				return fmt.Errorf("failed importing file: %w", err)
 			}
@@ -31,6 +31,8 @@ func root() *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&comma, "--comma", "-c", ",", "set the field separator to a comma")
 
 	return cmd
 }
